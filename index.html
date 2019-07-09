@@ -853,9 +853,9 @@
 	<div class="table color-table color-table59">
 		<div>Table Color</div><div>value</div>
 		<div>T<sub>0</sub></div><div>color<sub>0</sub></div>
-		<div>T<sub>1</sub></div><div>color<sub>1</sub>+codebook[codeword]</div>
+		<div>T<sub>1</sub></div><div>color<sub>1</sub> + codebook[codeword]</div>
 		<div>T<sub>2</sub></div><div>color<sub>1</sub></div>
-		<div>T<sub>3</sub></div><div>color<sub>1</sub>-codebook[codeword]</div>
+		<div>T<sub>3</sub></div><div>color<sub>1</sub> - codebook[codeword]</div>
 	</div>
 	<div class="footnote">
 		<p><i>fig</i>: color table definition for 59-bit T-Mode</p>
@@ -984,10 +984,10 @@
 	<p>From here it is again pretty simple. We extract the color channel data and codeword each into their own bytes from the payload, then expand the color channels from RGB4 to RGB8 using bit copying just like in 444 Mode. After that we use the codeword to look up the offset value from the ETC2 codebook. (ETC2 uses the same codebook for all modes, so reference the table in the T-Mode section) Finally we use the base colors and offset to construct a color table:</p>
 	<div class="table color-table color-table58">
 		<div>Table Color</div><div>value</div>
-		<div>T<sub>0</sub></div><div>color<sub>0</sub>+codebook[codeword]</div>
-		<div>T<sub>1</sub></div><div>color<sub>0</sub>-codebook[codeword]</div>
-		<div>T<sub>2</sub></div><div>color<sub>1</sub>+codebook[codeword]</div>
-		<div>T<sub>3</sub></div><div>color<sub>1</sub>-codebook[codeword]</div>
+		<div>T<sub>0</sub></div><div>color<sub>0</sub> + codebook[codeword]</div>
+		<div>T<sub>1</sub></div><div>color<sub>0</sub> - codebook[codeword]</div>
+		<div>T<sub>2</sub></div><div>color<sub>1</sub> + codebook[codeword]</div>
+		<div>T<sub>3</sub></div><div>color<sub>1</sub> - codebook[codeword]</div>
 	</div>
 	<div class="footnote">
 		<p><i>fig</i>: color table definition for 58-bit H-Mode</p>
