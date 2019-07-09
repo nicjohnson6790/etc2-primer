@@ -1,0 +1,1246 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>ETC2 Compression in a Nutshell</title>
+	<style>
+		body {
+			max-width: 960px;
+			margin: auto;
+			font-size: 12pt;
+			display: flex;
+			flex-direction: column;
+			padding-bottom: 150px;
+		}
+		h1 {
+			text-align: center;
+		}
+		h3 {
+			font-weight: bold;
+			margin-bottom: 5px;
+		}
+		p {
+			text-indent: 50px;
+		}
+		ul, ol, p, h4, body > div {
+			margin-bottom: 0px;
+			margin-top: 15px;
+		}
+
+		.footnote {
+			font-size: 10pt;
+			background: beige;
+			align-self: center;
+			padding: 0px 5px;
+			text-align: center;
+			max-width: 70%;
+		}
+		.footnote > p {
+			text-indent: 0px;
+			margin-top: 5px;
+		}
+		.footnote > ul {
+			text-align: left;
+		}
+		.note {
+			background: pink;
+			width: 70%;
+			align-self: center;
+		}
+		.code {
+			align-self: center;
+			padding: 15px;
+			background: #cce;
+			white-space: pre;
+			font-family: monospace;
+			font-size: 10pt;
+			min-width: 80%;
+			tab-size: 2;
+		}
+		.code > span.comment {
+			color: #484;
+		}
+
+		.byte-diagram {
+			align-self: center;
+			display: grid;
+			grid-row-gap: 2px;
+			grid-template-rows: repeat(2, 1fr);
+			padding: 2px;
+			background: beige;
+			text-align: center;
+		}
+		.byte-diagram > .byte-boundries > div.unused,
+		.byte-diagram > .layout > div.unused {
+			background: #888 !important;
+		}
+		.byte-diagram > .byte-boundries {
+			display: grid;
+			border-right: 1px solid black;
+		}
+		.byte-diagram > .byte-boundries > div {
+			background: #ccc;
+			border-top: 1px solid black;
+			border-left: 1px solid black;
+			min-width: 25px;
+			padding: 0 2px;
+		}
+		.byte-diagram > .byte-boundries > div:nth-child(2n) {
+			background: white;
+		}
+		.byte-diagram > .layout {
+			display: grid;
+			border-right: 1px solid black;
+		}
+		.byte-diagram > .layout > div {
+			background: white;
+			border-left: 1px solid black;
+			border-bottom: 1px solid black;
+			padding: 0 2px;
+		}
+		.byte-diagram > .layout > div:nth-child(2n) {
+			background: #ccc;
+		}
+
+		.code-layout > .byte-boundries {
+			grid-template-columns: repeat(8, 1fr);
+		}
+		.code-layout > .layout {
+			display: grid;
+			grid-template-columns: 8fr 8fr 8fr 3fr 3fr 1fr 1fr 32fr;
+			border-right: solid 1px black;
+		}
+
+		.codebook {
+			align-self: center;
+			display: grid;
+			grid-auto-flow: column;
+			text-align: center;
+		}
+		.codebook > div {
+			padding: 0 2px;
+			border-right: 1px solid black;
+			border-bottom: 1px solid black;
+		}
+		.codebook > div:nth-child(2n) {
+			background: #ccc;
+		}
+
+		.etc1 {
+			grid-template-columns: repeat(9, 1fr);
+			grid-template-rows: repeat(5, 1fr);
+		}
+
+		.color-444 > .byte-boundries {
+			grid-template-columns: repeat(3, 1fr);
+		}
+		.color-444 > .layout {
+			grid-template-columns: repeat(6, 1fr);
+		}
+
+		.color-444-copy > .layout {
+			grid-template-columns: repeat(2, 1fr);
+		}
+
+		.color-53 > .byte-boundries {
+			grid-template-columns: repeat(3, 1fr);
+		}
+		.color-53 > .layout {
+			grid-template-columns: repeat(3, 5fr 3fr);
+		}
+
+		.color-53-copy > .byte-boundries {
+			grid-template-columns: 8fr 2fr;
+		}
+		.color-53-copy > .layout {
+			grid-template-columns: 1fr 1fr;
+		}
+
+		.pixel-layout {
+			align-self: center;
+			display: grid;
+			grid-template-columns: repeat(6, 1fr);
+			grid-template-rows: repeat(6, 1fr);
+			text-align: center;
+		}
+		.pixel-layout > div {
+			border-right: 1px solid #ccc;
+			border-bottom: 1px solid #ccc;
+			margin: -1px 0px 0px -1px;
+			padding: 2px;
+		}
+		.pixel-layout > .t {
+			border-top: 0px;
+			border-bottom: 1px solid black;
+		}
+		.pixel-layout > .l {
+			border-right: 0px;
+			border-right: 1px solid black;
+		}
+		.pixel-layout > .b {
+			border-bottom: 0px;
+			border-top: 1px solid black;
+		}
+		.pixel-layout > .r {
+			border-right: 0px;
+			border-left: 1px solid black;
+		}
+		.pixel-layout > .bg {
+			border-right: 0px;
+		}
+		.pixel-layout > .rg {
+			border-bottom: 0px;
+		}
+		.pixel-layout > .n {
+			border: 0px;
+		}
+
+		.alpha-base {
+			grid-template-columns: repeat(17, 1fr);
+			grid-template-rows: repeat(5, 1fr);
+		}
+
+		.alpha {
+			grid-template-columns: repeat(17, 1fr);
+			grid-template-rows: repeat(3, 1fr);
+			padding: 2px;
+		}
+		.alpha > div {
+			writing-mode: vertical-rl;
+			text-orientation: mixed;
+		}
+
+		.alpha-lookup > .byte-boundries {
+			grid-template-columns: repeat(2, 1fr);
+		}
+		.alpha-lookup > .layout {
+			grid-template-columns: 5fr 1fr 2fr 4fr 4fr;
+		}
+
+		.alpha-code > .byte-boundries {
+			grid-template-columns: repeat(8, 1fr);
+		}
+		.alpha-code > .layout {
+			grid-template-columns: 8fr 8fr 48fr;
+		}
+
+		.byte-diagram.byte-diagram3 {
+			grid-template-rows: repeat(3, 1fr);
+		}
+		.code-layout.code-layout59 > .layout.layout59 {
+			grid-template-columns: 3fr 2fr 1fr 2fr repeat(5, 4fr) 2fr 1fr 1fr 32fr;
+		}
+
+		.etc2 {
+			grid-template-columns: repeat(8, 1fr);
+			grid-template-rows: repeat(2, 1fr);
+		}
+		.etc2 > div:nth-child(2n) {
+			background: white;
+		}
+		.etc2 > div:nth-child(4n),
+		.etc2 > div:nth-child(4n+1) {
+			background: #ccc;
+		}
+
+		.table {
+			align-self: center;
+			display: grid;
+			text-align: center;
+		}
+		.table > div {
+			border-right: 1px solid black;
+			border-bottom: 1px solid black;
+			padding: 0px 2px;
+		}
+
+		.color-table {
+			grid-template-columns: repeat(2, 1fr);
+			grid-template-rows: repeat(5, 1fr);
+		}
+		.color-table > div:nth-child(4n),
+		.color-table > div:nth-child(4n+1) {
+			background: #ccc;
+		}
+
+		.code-layout.code-layout58 > .layout.layout58 {
+			grid-template-columns: 1fr 7fr 3fr 2fr 1fr 16fr 1fr 1fr 32fr;
+		}
+
+		.hmode-layout > .byte-boundries {
+			grid-template-columns: repeat(4, 8fr) 1fr;
+		}
+		.hmode-layout > .layout {
+			grid-template-columns: 6fr 7fr 2fr 16fr 1fr 1fr;
+		}
+		.hmode-layout > .layoutH58 {
+			grid-template-columns: 6fr repeat(6, 4fr) 3fr;
+		}
+
+		.code-layout.code-layout57 > .layout.layout57 {
+			grid-template-columns: 1fr 7fr 1fr 7fr 3fr 2fr 1fr 8fr 1fr 33fr;
+		}
+
+		.code-layout.code-layoutP > .layout {
+			grid-template-columns: repeat(3, 7fr) 2fr 8fr 33fr;
+		}
+		.code-layout.code-layoutP > .layout.layoutP {
+			grid-template-columns: 7fr repeat(3, 6fr 7fr 6fr);
+		}
+
+		.overflow-table {
+			grid-template-columns: repeat(3, 1fr);
+			grid-template-rows: repeat(17, 1fr);
+		}
+		.overflow-table > div:nth-child(2n) {
+			background: #ccc;
+		}
+	</style>
+</head>
+<body>
+	<h1>A Primer on the ETC2 format</h1>
+	<h3>Motivation</h3>
+	<p>I was working on a personal project that could benefit from texture compression on the GPU, and wanted to support both Desktop and Mobile. When I looked into what the compression formats were like, I was surprised to find very little good documentation for how the mobile formats actually worked. After spending a significant amount of time taking notes on the information I found and a couple hours pouring over the original ETCPACK implementation of the compressor by Ericsson himself, (available on <a href="https://github.com/Ericsson/ETCPACK">GitHub</a>) I decided that doing a writeup to share with other people who might want all the information in one place would be a good thing.</p>
+	<h4>ETC the same old spiel</h4>
+	<p>If you somehow found your way to this document without an understanding of what ETC is or what it might be useful for, I will give you a quick rundown.</p>
+	<p>ETC (<a href="https://en.wikipedia.org/wiki/Ericsson_Texture_Compression">Ericsson Texture Compression</a>) is a texture compression format originally designed on the principal that the Human ocular system (your eyes) is much more perceptive to differences in luminance (brightness) than chrominance (color). Because of this it makes sense to break down an image into smaller regions (blocks) and store a base color for each region along with smaller offsets in luminance for each pixel in the region. This is a lossy form of compression, but it does a passable job in enough cases.</p>
+	<p>This is super useful in hardware accelerated graphics for two reasons.</p>
+	<ol>
+		<li>ETC compression achieves a 4:1 compression on RGBA data, (I am interested in the application to RGBA so this whole writeup is based on it) meaning you can fit four times as much texture data into the same amount of VRAM. With the usage of higher resolution textures in games today, most high budget games can have gigabytes, or even terabytes of texture data. This means that getting more data onto the GPU can lead to loading less frequently or moving things around less, both big wins.</li>
+		<li>One of the major limiting factors in GPU performance is memory bandwidth. Compressed texture data actually works on the GPU in a way such that you use less memory bandwidth to fetch texels from a texture that is stored in a compressed format. This means better performance, another big win.</li>
+	</ol>
+	<h3>ETC1</h3>
+	<p>The original specification of ETC compression is based on an older compression format called PACKMAN, and was originally called iPACKMAN (improved PACKMAN). This was later renamed to ETC, and when the specification was updated to ETC2, the original ETC became ETC1.</p>
+	<p>ETC1 is actually pretty simple in its format. This is really nice because ETC2 decoders are backwards compatible with ETC1 encoded data. So if you don't want to do a lot of bit banging, (we'll get into this later) you don't really have to, you can just implement the simple 444 Mode and Differential Mode of the ETC1 standard and boom, you get 4:1 reduction in file size with some artifacting in specific cases.</p>
+	<p>ETC1 makes some simple breakdowns of the image data into more managable chunks. (blocks) A block is simply defined as a 4X4 region of pixels which the ETC1 algorithm will compress into a smaller code for storage. This means that an image has to have dimensions that are multiples of 4 for the compression to work. (Pad the image if it is not a multiple of 4) Each block gets reduced to two 64 bit payloads, one storing color data, and one storing alpha data. Moving from 16*4=64 bytes of data per block to 2*8=16 bytes of data per block gets us that 4:1 compression number.</p>
+	<p class="note">NOTE: I say here that ETC1 stores a 64 bit payload for alpha, but it is important that ETC1 doesn't actually support any formats that store alpha data. This writeup is concerned with ETC2 and we are talking about ETC1 in the capacity that an ETC2 decoder is able to handle it. An ETC2 decoder will handle ETC1 encoded data with the alpha data without any complaints in the COMPRESSED_RGBA8_ETC2_EAC or COMPRESSED_SRGB8_ALPHA8_ETC2_EAC formats.</p>
+	<p>In the ETC1 modes each of these 4X4 pixel blocks is broken down into two sub-blocks that each have their own base color and what is referred to as a codeword. (really just an index) The codeword for each sub-block is used with a 2-bit pixel index that is stored for each pixel to look up an offset in what is called a codebook. (really just a table or 2d array) This offset is used to offset (duh) the base color of the block in the luminance direction for each pixel in that sub-block. Offsetting in the luminance direction is just a fancy way of saying that we are going to add the same value to all Red, Green, and Blue channels.</p>
+	<p>How this is all stored.</p>
+	<ul>
+		<li>The base colors are stored together using 8 bits for each channel. (24 bits total)</li>
+		<li>Each codeword is stored using 3 bits. (6 bits total)</li>
+		<li>Each pixel index is stored as 2 bits. (32 bits total)</li>
+	</ul>
+	<p>The eagle-eyed among you might notice 2 things here.</p>
+	<ol>
+		<li>3-bit codeword + 2-bit pixel index: the codebook must have 32 entries, and is probably 8X4 in dimension. Both of which are correct.</li>
+		<li>32+24+6 =/= 64. (The size of the payload we are compressing this block down to) Where do the extra two bits go?</li>
+	</ol>
+	<p>The extra two bits are each used as flags.</p>
+	<ul>
+		<li>One bit is used to indicate if the sub-blocks are oriented horizontally (4X2) or vertically. (2X4)</li>
+		<li>The other bit is used to indicate which one of the ETC1 Modes is used to encode the base colors of the block.</li>
+	</ul>
+	<p>How is this laid out in memory?</p>
+	<div class="byte-diagram code-layout">
+		<div class="byte-boundries">
+			<div>byte<sub>0</sub></div><div>byte<sub>1</sub></div>
+			<div>byte<sub>2</sub></div><div>byte<sub>3</sub></div>
+			<div>byte<sub>4</sub></div><div>byte<sub>5</sub></div>
+			<div>byte<sub>6</sub></div><div>byte<sub>7</sub></div>
+		</div>
+		<div class="layout">
+			<div>red</div>
+			<div>green</div>
+			<div>blue</div>
+			<div>cw<sub>0</sub></div>
+			<div>cw<sub>1</sub></div>
+			<div>d</div>
+			<div>f</div>
+			<div>pixel indexes</div>
+		</div>
+	</div>
+	<div class="footnote">
+		<p><i>fig</i>: top row: byte boundries, bottom row: layout for ETC1 encoded block</p>
+		<ul>
+			<li>red: red color channel data (8 bits)</li>
+			<li>green: green color channel data (8 bits)</li>
+			<li>blue: blue color channel data (8 bits)</li>
+			<li>cw<sub>0</sub>: codeword 0 (3 bits)</li>
+			<li>cw<sub>1</sub>: codeword 1 (3 bits)</li>
+			<li>d: differential flag (1 bit)</li>
+			<li>f: flip flag (1 bit)</li>
+			<li>pixel indexes: 16*2 bits for pixel indexes (32 bits)</li>
+		</ul>
+	</div>
+	<p>You might ask how we are storing two colors in only one color worth of channels, but we will go over that in a bit. It is handled differently depending on the value of the diff bit.</p>
+	<p>For now, let's get a look at what that codebook looks like:</p>
+	<div class="codebook etc1">
+		<div></div><div>0</div><div>1</div><div>2</div><div>3</div>
+		<div>0</div><div>2</div><div>8</div><div>-2</div><div>-8</div>
+		<div>1</div><div>5</div><div>17</div><div>-5</div><div>-17</div>
+		<div>2</div><div>9</div><div>29</div><div>-9</div><div>-29</div>
+		<div>3</div><div>13</div><div>42</div><div>-13</div><div>-42</div>
+		<div>4</div><div>18</div><div>60</div><div>-18</div><div>-60</div>
+		<div>5</div><div>24</div><div>80</div><div>-24</div><div>-80</div>
+		<div>6</div><div>33</div><div>106</div><div>-33</div><div>-106</div>
+		<div>7</div><div>47</div><div>183</div><div>-47</div><div>-183</div>
+	</div>
+	<div class="footnote">
+		<p><i>fig</i>:ETC1 codebook</p>
+		<p>horizontal index is codeword, vertical is pixel index</p>
+	</div>
+	<p>Those of you who have done the reading might notice something interesting about this codebook: it isn't laid out like the ones in a lot of the other resources available online. Why? Because for some reason the people that wrote those other resouces decided to put the entries in an order that looks pretty instead of the order that the entries actually appear in the hardware. (if you can't tell, I wish this weren't the case, so I'm fixing it here) If you look in the comments of Ericsson's original implementation or in some small comments here and there in other resources online it specifically states that the table should be laid out this way in memory so that the first bit of the pixel index can be used to indicate sign. &lt/END OF SMALL RANT&gt</p>
+	<p>Now that we've got the basics out of the way, on to how these payloads are decoded in the ETC1 modes we mentioned earlier.</p>
+	<h4>444 Mode</h4>
+	<p>The difference between this mode and the next is how they decode the color channels. The 444 mode does nothing special, it treats each color as RGB4, so each channel has color 0 packed in the high nibble and color 1 packed in the low nibble.</p>
+	<div class="byte-diagram color-444">
+		<div class="byte-boundries">
+			<div>byte<sub>0</sub></div>
+			<div>byte<sub>1</sub></div>
+			<div>byte<sub>2</sub></div>
+		</div>
+		<div class="layout">
+			<div>C<sub>0r</sub></div><div>C<sub>1r</sub></div>
+			<div>C<sub>0g</sub></div><div>C<sub>1g</sub></div>
+			<div>C<sub>0b</sub></div><div>C<sub>1b</sub></div>
+		</div>
+	</div>
+	<div class="footnote">
+		<p><i>fig</i>:top row: byte boundries, bottom row: 444 mode color layout</p>
+		<p>each box here is 4 bits totalling 24 bits</p>
+	</div>
+	<p>Simple, right? Yes. After the decoder unpacks these bits, it then expands them out to 8 bits. It does this via a method called bit copying. Simply it puts bits as high as they will go into the byte, then copies in the left over low bits from the high end of the bits being copied in.</p>
+	<div class="byte-diagram color-444-copy">
+		<div class="byte-boundries">
+			<div>byte<sub>0</sub></div>
+		</div>
+		<div class="layout">
+			<div>C<sub>0</sub></div>
+			<div>C<sub>0</sub></div>
+		</div>
+	</div>
+	<div class="footnote">
+		<p><i>fig</i>:444 mode color expansion copy</p>
+		<p>each box here is 4 bits filling the 8 bits of the byte</p>
+	</div>
+	<p>The next step after this is to add the offset. Using the codeword for the sub-block and the index for whichever pixel we are decoding, we look for the offset value and add it to each of the channels for this pixel to get the final color of that pixel. Blammo, we have decoded a pixel using the ETC1 444 Mode. (code follows)</p>
+	<p class="code">
+		<span class="comment">//payload: the data in the encoded block value</span>
+		<span class="comment">//image: the data of the image to be written with [y][x] layout</span>
+		<span class="comment">//x: x value of the top left corner of the block to be decoded</span>
+		<span class="comment">//y: y value of the top left corner of the block to be decoded</span>
+		void decode444(u8[] payload, u8[][] image, u32 x, u32 y) {
+			<span class="comment">//first pull out each of the color's color channel data from the payload</span>
+			u8 c0r4 = payload[0]|7,4|;
+			u8 c0g4 = payload[1]|7,4|;
+			u8 c0b4 = payload[2]|7,4|;
+
+			u8 c1r4 = payload[0]|3,0|;
+			u8 c1g4 = payload[1]|3,0|;
+			u8 c1b4 = payload[2]|3,0|;
+
+			<span class="comment">//we are doing the color extraction in two parts here, in the ETC2 modes we won't</span>
+			<span class="comment">//then use bit copying to extend the colors to RGB8</span>
+			u8 c0r = c0r4 << 4 | c0r4;
+			u8 c0g = c0g4 << 4 | c0g4;
+			u8 c0b = c0b4 << 4 | c0b4;
+
+			u8 c1r = c1r4 << 4 | c1r4;
+			u8 c1g = c1g4 << 4 | c1g4;
+			u8 c1b = c1b4 << 4 | c1b4;
+
+			<span class="comment">//retreive the codewords from the payload</span>
+			u8 codeword0 = payload[3]|7,5|;
+			u8 codeword1 = payload[3]|4,2|;
+
+			<span class="comment">//retreive the pixel indexes into a more convenient form</span>
+			u8[] pixelIndexes = u8[16];
+			for(u8 a = 0; a < 4; a++) 
+			for(u8 b = 0; b < 4; b++) {
+				pixelIndexes[a*4 + b] = payload[4 + a]|7 - b*2, 6 - b*2|;
+			}
+
+			<span class="comment">//check if the sub-blocks are horizontal or vertical</span>
+			if(!payload[3]|0,0|) { <span class="comment">//flip bit indicates horizontal sub-blocks</span>
+				<span class="comment">//iterate over the pixels in each sub-block and set their final values in the image data</span>
+				for(u8 a = 0; a < 2; a++)
+				for(u8 b = 0; b < 4; b++) {
+					i8 codebookValue = codebookETC1[codeword0][pixelIndexes[a*4 + b]];
+					u32 imageX = 4*(x + b);
+					u32 imageY = y + a;
+					image[imageY][imageX] = clamp(0, c0r + codebookValue, 255);
+					image[imageY][imageX + 1] = clamp(0, c0g + codebookValue, 255);
+					image[imageY][imageX + 2] = clamp(0, c0b + codebookValue, 255);
+
+					codebookValue = codebookETC1[pixelIndexes[(a + 2)*4 + b]][codeword1];
+					imageY = imageY + 2;
+					image[imageY][imageX] = clamp(0, c1r + codebookValue, 255);
+					image[imageY][imageX + 1] = clamp(0, c1g + codebookValue, 255);
+					image[imageY][imageX + 2] = clamp(0, c1b + codebookValue, 255);
+				}
+			} else { <span class="comment">//flip bit indicates vertical sub-blocks</span>
+				for(u8 a = 0; a < 4; a++)
+				for(u8 b = 0; b < 2; b++) {
+					i8 codebookValue = codebookETC1[codeword1][pixelIndexes[a*4 + b]];
+					u32 imageX = 4*(x + b);
+					u32 imageY = y + a;
+					image[imageY][imageX] =	clamp(0, c0r + codebookValue, 255);
+					image[imageY][imageX + 1] =	clamp(0, c0g + codebookValue, 255);
+					image[imageY][imageX + 2] =	clamp(0, c0b + codebookValue, 255);
+
+					codebookValue = codebookETC1[pixelIndexes[a*4 + b + 2]][codeword0];
+					u32 imageX = imageX + 8;
+					image[imageY][imageX] =	clamp(0, c1r + codebookValue, 255);
+					image[imageY][imageX + 1] =	clamp(0, c1g + codebookValue, 255);
+					image[imageY][imageX + 2] =	clamp(0, c1b + codebookValue, 255);
+				}
+			}
+		}
+	</p>
+	<p>For reference, the pixel indexes are stored in this order for all ETC modes:</p>
+	<div class="pixel-layout">
+		<div class="t l"></div><div>X+</div><div>→</div><div></div><div></div><div class="t r"></div>
+		<div>Y+</div><div>0</div><div>1</div><div>2</div><div>3</div><div class="bg"></div>
+		<div>↓</div><div>4</div><div>5</div><div>6</div><div>7</div><div class="bg"></div>
+		<div></div><div>8</div><div>9</div><div>10</div><div>11</div><div class="bg"></div>
+		<div></div><div>12</div><div>13</div><div>14</div><div>15</div><div class="n"></div>
+		<div class="b l"></div><div class="rg"></div><div class="rg"></div><div class="rg"></div><div class="n"></div><div class="b r"></div>
+	</div>
+	<div class="footnote">
+		<p><i>fig</i>:pixel index layout diagram</p>
+		<p>not anything too special here</p>
+	</div>
+	<h4>Differential Mode</h4>
+	<p>Differential mode works in basically the same way as 444 mode, but the way that it unpacks the color data from the incomming payload is different. Instead of being stored as RGB4 data, the first color is stored as RGB5 data and the second color is stored as 3-bit offsets to the first color. This gives a higher precision if the base colors of the two sub-blocks are similar.</p>
+	<div class="byte-diagram color-53">
+		<div class="byte-boundries">
+			<div>byte<sub>0</sub></div>
+			<div>byte<sub>1</sub></div>
+			<div>byte<sub>2</sub></div>
+		</div>
+		<div class="layout">
+			<div>C<sub>0r</sub></div><div>ΔC<sub>1r</sub></div>
+			<div>C<sub>0g</sub></div><div>ΔC<sub>1g</sub></div>
+			<div>C<sub>0b</sub></div><div>ΔC<sub>1b</sub></div>
+		</div>
+	</div>
+	<div class="footnote">
+		<p><i>fig</i>:differential mode color layout</p>
+		<p>each left box of a pair here is 5 bits and its partner is 3, totalling 24 bits</p>
+	</div>
+	<p>The docoder unpacks these values into 6 bytes, then shifts the differential bytes up then down by 5 bits to extend the sign of the differential value into the upper bits and put the value into two's compliment. This allows the offset to be anywhere in the range [-4, 3]. Once this is done color 1 is expanded from the RGB5 values to RGB8 values using bit copying, and color2 is expanded from the RGB5 values with the deltas added on to RGB8 using bit copying as well.</p>
+	<div class="byte-diagram color-53-copy">
+		<div class="byte-boundries">
+			<div>byte<sub>0</sub></div>
+			<div></div>
+		</div>
+		<div class="layout">
+			<div>C<sub>0</sub></div>
+			<div>C<sub>0</sub></div>
+		</div>
+	</div>
+	<div class="footnote">
+		<p><i>fig</i>:differential mode color expansion copy</p>
+		<p>the top 5 bits of the byte are filled with the 5 bits from the RGB5 data, then the lower bits are filled with the upper bits of the data again. this is a better example of bit copying than 444 since it doesn't line up perfectly</p>
+	</div>
+	<p>Just like in 444 Mode, the next step is to add the offset to the base color value. Again, the codeword for the block and the pixel index for the pixel being decoded are used to look up the offset value from the codebook and then that value is added to each channel of the base color. (code follows)</p>
+	<p class="code">
+		<span class="comment">//cs5: the RGB5 color data already extracted from the payload to determine mode by overflow</span>
+		void decodeDifferential(u8[] payload, u8[][] image, u32 x, u32 y, cs5[][]) {
+			<span class="comment">//extend color 0 color channels via bit copying</span>
+			u8 c0r = cs5[0][0] << 3 | cs5[0][0] >> 2;
+			u8 c0g = cs5[0][1] << 3 | cs5[0][1] >> 2;
+			u8 c0b = cs5[0][2] << 3 | cs5[0][2] >> 2;
+
+			<span class="comment">//extend color 1 color channels via bit copying</span>
+			u8 c1r = cs5[1][0] << 3 | cs5[1][0] >> 2;
+			u8 c1g = cs5[1][1] << 3 | cs5[1][1] >> 2;
+			u8 c1b = cs5[1][2] << 3 | cs5[1][2] >> 2;
+
+			<span class="comment">//note from here out this is identical to the 444 decode</span>
+			u8 codeword0 = payload[3]|7,5|;
+			u8 codeword1 = payload[3]|4,2|;
+
+			u8[] pixelIndexes = u8[16];
+			for(u8 a = 0; a < 4; a++) 
+			for(u8 b = 0; b < 4; b++) {
+				pixelIndexes[a*4 + b] = payload[4 + a]|7 - b*2, 6 - b*2|;
+			}
+
+			if(!payload[3]|0,0|) {
+				for(u8 a = 0; a < 2; a++)
+				for(u8 b = 0; b < 4; b++) {
+					i8 codebookValue = codebookETC1[codeword0][pixelIndexes[a*4 + b]];
+					u32 imageX = 4*(x + b);
+					u32 imageY = y + a;
+					image[imageY][imageX] = clamp(0, c0r + codebookValue, 255);
+					image[imageY][imageX + 1] = clamp(0, c0g + codebookValue, 255);
+					image[imageY][imageX + 2] = clamp(0, c0b + codebookValue, 255);
+
+					codebookValue = codebookETC1[pixelIndexes[(a + 2)*4 + b]][codeword1];
+					imageY = imageY + 2;
+					image[imageY][imageX] = clamp(0, c1r + codebookValue, 255);
+					image[imageY][imageX + 1] = clamp(0, c1g + codebookValue, 255);
+					image[imageY][imageX + 2] = clamp(0, c1b + codebookValue, 255);
+				}
+			} else {
+				for(u8 a = 0; a < 4; a++)
+				for(u8 b = 0; b < 2; b++) {
+					i8 codebookValue = codebookETC1[codeword1][pixelIndexes[a*4 + b]];
+					u32 imageX = 4*(x + b);
+					u32 imageY = y + a;
+					image[imageY][imageX] =	clamp(0, c0r + codebookValue, 255);
+					image[imageY][imageX + 1] =	clamp(0, c0g + codebookValue, 255);
+					image[imageY][imageX + 2] =	clamp(0, c0b + codebookValue, 255);
+
+					codebookValue = codebookETC1[pixelIndexes[a*4 + b + 2]][codeword0];
+					u32 imageX = imageX + 8;
+					image[imageY][imageX] =	clamp(0, c1r + codebookValue, 255);
+					image[imageY][imageX + 1] =	clamp(0, c1g + codebookValue, 255);
+					image[imageY][imageX + 2] =	clamp(0, c1b + codebookValue, 255);
+				}
+			}
+		}
+	</p>
+	<p>That's it for the ETC1 decoding modes, hopefully you are still with me here.</p>
+	<h3>Alpha decode</h3>
+	<p>I think it is worth saying this again, but alpha isn't supported under ETC1 normally, but we are really focusing on ETC2 here. With that said, alpha is stored in a method very similar to the normal ETC1 444 Mode, but since there is only one channel, it is simplified a bit. But don't worry, the simplification in decode is made up for in the complexity of the codebook.</p>
+	<p>So I guess we will take a look at the codebook first:</p>
+	<div class="codebook alpha-base">
+		<div></div><div>0</div><div>1</div><div>2</div><div>3</div>
+		<div>0</div><div>-3</div><div>-6</div><div>-9</div><div>-15</div>
+		<div>1</div><div>-3</div><div>-7</div><div>-10</div><div>-13</div>
+		<div>2</div><div>-2</div><div>-5</div><div>-8</div><div>-13</div>
+		<div>3</div><div>-2</div><div>-4</div><div>-6</div><div>-13</div>
+		<div>4</div><div>-3</div><div>-6</div><div>-8</div><div>-12</div>
+		<div>5</div><div>-3</div><div>-7</div><div>-9</div><div>-11</div>
+		<div>6</div><div>-4</div><div>-7</div><div>-8</div><div>-11</div>
+		<div>7</div><div>-3</div><div>-5</div><div>-8</div><div>-11</div>
+		<div>8</div><div>-2</div><div>-6</div><div>-8</div><div>-10</div>
+		<div>9</div><div>-2</div><div>-5</div><div>-8</div><div>-10</div>
+		<div>10</div><div>-2</div><div>-4</div><div>-8</div><div>-10</div>
+		<div>11</div><div>-2</div><div>-5</div><div>-7</div><div>-10</div>
+		<div>12</div><div>-3</div><div>-4</div><div>-7</div><div>-10</div>
+		<div>13</div><div>-1</div><div>-2</div><div>-3</div><div>-10</div>
+		<div>14</div><div>-4</div><div>-6</div><div>-8</div><div>-9</div>
+		<div>15</div><div>-3</div><div>-5</div><div>-7</div><div>-9</div>
+	</div>
+	<div class="footnote">
+		<p><i>fig</i>:alpha codebook base definition</p>
+		<p>oh... it get's worse</p>
+	</div>
+	<p>You might be sitting in your seat right now thinking, "Well that isn't too bad, it's only twice the size of the codebook for ETC1." But oh ye nieve soul, this is only the base definition of the alpha codebook, we'll call it A for posterity. Now hold on to your butts.</p>
+	<div class="codebook alpha">
+		<div>0</div><div>..3</div><div>..7</div>
+		<div>..15</div><div>0A</div><div>0(-A-1)</div>
+		<div>..31</div><div>1A</div><div>1(-A-1)</div>
+		<div>..47</div><div>2A</div><div>2(-A-1)</div>
+		<div>..63</div><div>3A</div><div>3(-A-1)</div>
+		<div>..79</div><div>4A</div><div>4(-A-1)</div>
+		<div>..95</div><div>5A</div><div>5(-A-1)</div>
+		<div>..111</div><div>6A</div><div>6(-A-1)</div>
+		<div>..127</div><div>7A</div><div>7(-A-1)</div>
+		<div>..143</div><div>8A</div><div>8(-A-1)</div>
+		<div>..159</div><div>9A</div><div>9(-A-1)</div>
+		<div>..175</div><div>10A</div><div>10(-A-1)</div>
+		<div>..191</div><div>11A</div><div>11(-A-1)</div>
+		<div>..207</div><div>12A</div><div>12(-A-1)</div>
+		<div>..223</div><div>13A</div><div>13(-A-1)</div>
+		<div>..239</div><div>14A</div><div>14(-A-1)</div>
+		<div>..255</div><div>15A</div><div>15(-A-1)</div>
+	</div>
+	<div class="footnote">
+		<p><i>fig</i>:alpha codebook full definition</p>
+		<p>the horizontal index here is codeword, and the vertical index is pixel index</p>
+	</div>
+	<p>That's a big codebook. So... the codeword is obviously 8 bits and the pixel index is 3 bits. Note that each cell of this codebook is defined as an interger multiple of the base definition A. Now some of you might ask, "Why are the first two cells wasted on 0 values? You only really need one column of 0 values to get that offset mode." I know this was my first reaction when I figured out what this codebook looked like. After thinking about it for a while, I am pretty sure the answer comes down to the difference between hardware and software implementations.</p>
+	<p>In software, it is significantly faster to store all of your values in one big array so that using two indexes you can look up a value in one memory operation. In hardware, everything kind of happens at the same time, so it makes more sense to make a couple smaller tables that each have multiple indexes to save space on the silicon. This leads to why there are 16 columns of 0 values. I speculate that this isn't one big table in the hardware, but one smaller table that looks like our old friend A. This would mean that the hardware decodes the 8 bit codeword as two 4 bit values, the upper nibble is a multiplier, and the lower nibble is an index into A along with the pixel index, where the high bit of the pixel index is used to indicate sign of the table lookup.</p>
+	<p>Something like this:</p>
+	<div class="byte-diagram alpha-lookup">
+		<div class="byte-boundries">
+			<div>pixel index</div>
+			<div>codeword</div>
+		</div>
+		<div class="layout">
+			<div></div>
+			<div>s</div>
+			<div>pi</div>
+			<div>mul</div>
+			<div>ti</div>
+		</div>
+	</div>
+	<div class="footnote">
+		<p><i>fig</i>: top row: byte boundries, bottom row: bit layout of alpha codeword and pixel index</p>
+		<ul>
+			<li>s: sign bit for value looked up from the table A (1 bit)</li>
+			<li>pi: pixel index used to look up the value from table A (2 bits)</li>
+			<li>mul: multiplier applied to the value looked up from the table A (4 bits)</li>
+			<li>ti: table index used to look up the value from table A (4 bits)</li>
+		</ul>
+	</div>
+	<p class="note">NOTE: by storing the negative value in A, the behavior m*(-A[cw<sub>l</sub>, pi|1,0|] - 1) actually does the work of translating the negative two's compliment value to a positive unsigned value. So the negative sign there is probably actually indicating bit-level negation.</p>
+	<p>Honestly this information about how the hardware actually treats the values isn't particularly useful to somebody looking to understand how compressing something into the ETC2 format works, but I think it is important to understand the reasoning behind why certain things are done the way they are. So I included my speculation as to the reasoning behind the decision to store so many zero values.</p>
+	<p>Okay, now that we've got an understanding of how the codebook looks, and probably works, let's take a look at how the alpha payload is laid out.</p>
+	<div class="byte-diagram alpha-code">
+		<div class="byte-boundries">
+			<div>byte<sub>0</sub></div><div>byte<sub>1</sub></div>
+			<div>byte<sub>2</sub></div><div>byte<sub>3</sub></div>
+			<div>byte<sub>4</sub></div><div>byte<sub>5</sub></div>
+			<div>byte<sub>6</sub></div><div>byte<sub>7</sub></div>
+		</div>
+		<div class="layout">
+			<div>base</div>
+			<div>cw</div>
+			<div>pixel indexes</div>
+		</div>
+	</div>
+	<div class="footnote">
+		<p><i>fig</i>: top row: byte boundries, bottom row: bit layout of alpha code</p>
+		<ul>
+			<li>base: the base alpha of the block (8 bits)</li>
+			<li>cw: codeword used as a lookup into the codebook (8 bits)</li>
+			<li>pixel indexes: 16*3bit pixel indexes used as a lookup into the codebook (48 bits)</li>
+		</ul>
+		<p>the block is not broken down into sub-blocks in alpha compression, the whole block has one base value</p>
+	</div>
+	<p>Ah, that is refreshingly simple. The method for decoding is pretty straightforward too. For each pixel in the order described above, extract the pixel index from the list. Then use it with the codeword to look up an offset from the codebook. Lastly, add the offset to the base value and clamp to [0,255] to get the final alpha value of that pixel.</p>
+	<p>That wraps up the definition of how alpha is stored in the ETC2 RGBA formats. (code follows)</p>
+	<p class="code">
+		void decodeAlpha(u8[] payload, u8[][] image, u32 x, u32 y) {
+			<span class="comment">//extract base alpha value for block from payload</span>
+			u8 baseAlpha = payload[0];
+
+			<span class="comment">//extract codeword value for block from payload</span>
+			u8 codeword = payload[1];
+
+			<span class="comment">//extract pixel indexes for block from payload into a more convenient format</span>
+			u8[] pi = u8[16];
+			pi[0] = payload[2]|7,5|;
+			pi[0] = payload[2]|4,2|;
+			pi[0] = payload[2]|1,0| << 1 | payload[3]|7,7|;
+			pi[0] = payload[3]|6,4|;
+
+			pi[0] = payload[3]|3,1|;
+			pi[0] = payload[3]|0,0| << 2 | payload[4]|7,6|;
+			pi[0] = payload[4]|5,3|;
+			pi[0] = payload[4]|2,0|;
+
+			pi[0] = payload[5]|7,5|;
+			pi[0] = payload[5]|4,2|;
+			pi[0] = payload[5]|1,0| << 1 | payload[6]|7,7|;
+			pi[0] = payload[6]|6,4|;
+
+			pi[0] = payload[6]|3,1|;
+			pi[0] = payload[6]|0,0| << 2 | payload[7]|7,6|;
+			pi[0] = payload[7]|5,3|;
+			pi[0] = payload[7]|2,0|;
+
+			<span class="comment">//traverse the pixel array to set the final alpha values</span>
+			for(var a = 0; a < 4; a++)
+			for(var a = 0; a < 4; a++) {
+				image[y + a][4(x + b) + 3] = clamp(0, baseAlpha + codebookAlpha[codeword][pi[a*4 + b]], 255);
+			}
+		}
+	</p>
+	<p class="note">NOTE: in an ETC2 encoded block, the alpha payload comes before the color payload.</p>
+	<p>Next we will move on to the more complicated ETC2 extension modes.</p>
+	<h3>ETC2</h3>
+	<p>ETC1 has some noticable artifacts in 2 main cases.</p>
+	<ol>
+		<li>When the chrominance values of a sub block are not distributed near the base color or along the luminance direction of the base color.</li>
+		<li>When the chrominance values of a block gradually change across a range of values. (small gradients)</li>
+	</ol>
+	<p>In order to combat these two situations it was proposed that the original ETC1 format be extended with new modes. But an important point of contention was retaining the 4:1 compression ratio. This meant that no extra bits could be added to the compressed payload to indicate the new modes. A maybe not so simple method to do this was found.</p>
+	<p>In ETC1 differential mode, some of the possible combinations of base color and offset result in overflow. In an ETC1 decoder, these overflowed values are simply clamped and nothing interesting happens, but an ETC2 decoder uses this overflow to indicate which of the ETC2 modes is used to encode the compressed block.</p>
+	<p>Overflow in the Red channel indicates that ETC2 T-Mode is used, overflow in the Green channel indicates that ETC2 H-Mode is used, and overflow in the Blue channel indicates that ETC2 Planar Mode is used.</p>
+	<p>Here is a quick description of how this mechanism works. (code follows)</p>
+	<p class="code">
+		void decodePayload(u8[] payload, u8[][] image, u32 x, u32 y) {
+			if(payload[3]|1,1|) {
+				u8 c0r5 = payload[0]|7,3|;
+				u8 c0g5 = payload[1]|7,3|;
+				u8 c0b5 = payload[2]|7,3|;
+
+				i8 c1rd = (payload[0]|2,0| << 5) >> 5;
+				i8 c1gd = (payload[1]|2,0| << 5) >> 5;
+				i8 c1bd = (payload[2]|2,0| << 5) >> 5;
+
+				i8 c1r5 = c0r5 + c1rd;
+				i8 c1r5 = c0r5 + c1rd;
+				i8 c1r5 = c0r5 + c1rd;
+
+				if(c1r5 > 31 || c1r5 < 0) {
+					decode59T(payload, image, x, y);
+				} else if(c1g5 > 31 || c1g5 < 0) {
+					decode58H(payload, image, x, y);
+				} else if(c1b5 > 31 || c1b5 < 0) {
+					decode57P(payload, image, x, y);
+				} else {
+					decodeDifferential(payload, image, x, y [[c0r5, c0g5, c0b5], [c1r5, c1g5, c1b5]]);
+				}
+			} else {
+				decode444(payload, image, x, y);
+			}
+		}
+	</p>
+	<h4>59-bit T-Mode</h4>
+	<p>Welcome to the first of three modes defined in the ETC2 specification. The reason that I mentioned that you might not want to implement these in a compressor before is because they use a significant amount of bit banging to get data into and out of the compressed payloads. So stap in, we're in for a little bit of a ride.</p>
+	<p>First we will get right into it and take a look at the 59-bit T-mode payload layout compared to the normal diff mode payload layout.</p>
+	<div class="byte-diagram byte-diagram3 code-layout code-layout59">
+		<div class="byte-boundries">
+			<div>byte<sub>0</sub></div><div>byte<sub>1</sub></div>
+			<div>byte<sub>2</sub></div><div>byte<sub>3</sub></div>
+			<div>byte<sub>4</sub></div><div>byte<sub>5</sub></div>
+			<div>byte<sub>6</sub></div><div>byte<sub>7</sub></div>
+		</div>
+		<div class="layout">
+			<div>red</div>
+			<div>green</div>
+			<div>blue</div>
+			<div>cw<sub>0</sub></div>
+			<div>cw<sub>1</sub></div>
+			<div>d</div>
+			<div>f</div>
+			<div>pixel indexes</div>
+		</div>
+		<div class="layout layout59">
+			<div class="unused"></div>
+			<div>R<sub>0a</sub></div>
+			<div class="unused"></div>
+			<div>R<sub>0b</sub></div>
+			<div>G<sub>0</sub></div>
+			<div>B<sub>0</sub></div>
+			<div>R<sub>1</sub></div>
+			<div>G<sub>1</sub></div>
+			<div>B<sub>1</sub></div>
+			<div>C<sub>a</sub></div>
+			<div>d</div>
+			<div style="padding: 0px 0px; font-size: 10pt;">C<sub>b</sub></div>
+			<div>pixel indexes</div>
+		</div>
+	</div>
+	<div class="footnote">
+		<p><i>fig</i>: top row: byte boundries, middle row: standard block bit layout, bottom row: bit layout of 59-bit T-mode</p>
+		<ul>
+			<li>R<sub>0a</sub>: high bits of red channel of color<sub>0</sub> (2 bits)</li>
+			<li>R<sub>0b</sub>: low bits of red channel of color<sub>0</sub> (2 bits)</li>
+			<li>G<sub>0</sub>: green channel of color<sub>0</sub> (4 bits)</li>
+			<li>B<sub>0</sub>: blue channel of color<sub>0</sub> (4 bits)</li>
+			<li>R<sub>1</sub>: red channel of color<sub>1</sub> (4 bits)</li>
+			<li>G<sub>1</sub>: green channel of color<sub>1</sub> (4 bits)</li>
+			<li>B<sub>1</sub>: blue channel of color<sub>1</sub> (4 bits)</li>
+			<li>C<sub>a</sub>: high bits of codeword (2 bits)</li>
+			<li>d: diff bit (must be 1) (1 bit)</li>
+			<li>C<sub>b</sub>: low bit of codeword (1 bit)</li>
+			<li>pixel indexes: 16*2-bit indexes for each pixel in the block (32 bits)</li>
+		</ul>
+		<p>dark grey blocks are unable to be used to store information</p>
+	</div>
+	<p>This probably clues you in to a couple different things right off the bat.</p>
+	<ul>
+		<li>There are 4 bits in what would normally be the red channel that are unable to be used for data. This is because the normal differential interpretation of those bits must overflow. The only way we can control that happening is by setting the 4 bits that are used to store the R<sub>0</sub> channel and then setting the rest of the bits to assure overflow.</li>
+		<li>The bits for each of the color channels are 4 bits long. The base colors for this mode must be stored as RGB4, and this is actually the case for both T-Mode and H-Mode.</li>
+	</ul>
+	<p class="note">NOTE: when storing the 4 bits for R<sub>0a</sub> into the first byte of the payload, it makes sense to store them and then alter the other bits into an overflow state. The simplest way to do this would probably be to have a precomputed table for the 16 possible combinations of the 4 bits to be stored.</p>
+	<p>This isn't really that complicated when we get right down to it. From here you just extract the color channels and codeword out of the payload each into their own bytes, then use bit copying to extend the 4 bit color channels out to 8 bits just like in 444 Mode.</p>
+	<p>Now for the special sauce of T-Mode. The pixel indexes are not used as a lookup into a codebook, just the codeword is. We'll see what the pixel indexes are used for in a bit here, but first let's get a look at the codebook for ETC2.</p>
+	<div class="codebook etc2">
+		<div>0</div><div>3</div>
+		<div>1</div><div>6</div>
+		<div>2</div><div>11</div>
+		<div>3</div><div>16</div>
+		<div>4</div><div>23</div>
+		<div>5</div><div>32</div>
+		<div>6</div><div>41</div>
+		<div>7</div><div>64</div>
+	</div>
+	<div class="footnote">
+		<p><i>fig</i>:ETC2 codebook</p>
+		<p>the top row here is the codeword used to access the codebook</p>
+	</div>
+	<p>Well, this is pretty simple compared to the alpha codebook, but the reason for that is becase the pixel index is used as a lookup into a color table instead of the codebook, so there are only 3 bits worth of address to use for looking into this codebook. The data retrieved from this codebook is used as an offset to one of the base colors in the luminance direction to generate additional color values.</p>
+	<p>"How are the colors in this table determined?" you might ask. Let's take a look.</p>
+	<div class="table color-table color-table59">
+		<div>Table Color</div><div>value</div>
+		<div>T<sub>0</sub></div><div>color<sub>0</sub></div>
+		<div>T<sub>1</sub></div><div>color<sub>1</sub>+codebook[codeword]</div>
+		<div>T<sub>2</sub></div><div>color<sub>1</sub></div>
+		<div>T<sub>3</sub></div><div>color<sub>1</sub>-codebook[codeword]</div>
+	</div>
+	<div class="footnote">
+		<p><i>fig</i>: color table definition for 59-bit T-Mode</p>
+		<p>color+number here means adding that number to each channel of the color. (luminance offset) the resulting value is clamped to the [0,255] range</p>
+	</div>
+	<p>Now we have all the informationg about the implementation of the 59-bit T-Mode, all that is left to do here is to use the pixel indexes as indexes into this table to decode the color values of each pixel in the order that was shown earlier. (code follows)</p>
+	<p class="code">
+		void decode59T(u8[] payload, u8[] image, u32 x, u32 y) {
+			u8[][] colors = u8[4][3];
+			<span class="comment">//extract color channels from payload and expand using bit copying</span>
+			u8 colors[0][0] = payload[0]|4,3| << 6 | payload[0]|1,0| << 4 | payload[0]|4,3| << 2 | payload[0]|1,0|;
+			u8 colors[0][1] = payload[1]|7,4| << 4 | payload[1]|7,4|;
+			u8 colors[0][2] = payload[1]|3,0| << 4 | payload[1]|3,0|;
+
+			u8 colors[2][0] = payload[2]|7,4| << 4 | payload[2]|7,4|;
+			u8 colors[2][1] = payload[2]|3,0| << 4 | payload[2]|3,0|;
+			u8 colors[2][2] = payload[3]|7,4| << 4 | payload[3]|7,4|;
+
+			<span class="comment">//extract codeword from payload</span>
+			u8 codeword = payload[3]|3,2| << 1 | payload[3]|0,0|;
+
+			<span class="comment">//generate offset colors</span>
+			u8 colors[1][0] = clamp(0, colors[2][0] + codebookETC2[codeword], 255);
+			u8 colors[1][1] = clamp(0, colors[2][1] + codebookETC2[codeword], 255);
+			u8 colors[1][2] = clamp(0, colors[2][2] + codebookETC2[codeword], 255);
+
+			u8 colors[3][0] = clamp(0, colors[2][0] - codebookETC2[codeword], 255);
+			u8 colors[3][1] = clamp(0, colors[2][1] - codebookETC2[codeword], 255);
+			u8 colors[3][2] = clamp(0, colors[2][2] - codebookETC2[codeword], 255);
+
+			<span class="comment">//set colors in image data</span>
+			for(u8 a = 0; a < 4; a++)
+			for(u8 b = 0; b < 4; b++) {
+				u8 pi = payload[4 + a]|7 - 2*b, 6 - 2*b|;
+
+				u32 imageY = y + a;
+				u32 imageX = 4*(x + b);
+				image[imageY][imageX] = colors[pi][0];
+				image[imageY][imageX + 1] = colors[pi][1];
+				image[imageY][imageX + 2] = colors[pi][2];
+			}
+		}
+	</p>
+	<p>That is all there is to T-Mode, next we will take a look at H-Mode which is very similar.</p>
+	<h4>58-bit H-Mode</h4>
+	<p>T-Mode stored 59 bits into the differential mode payload if you took the time to count or connected the dots. 58-bit H-Mode, as it's name suggests, stores 58 bits into the differential code. Let's take a look at the layout for how it does this:</p>
+	<div class="byte-diagram byte-diagram3 code-layout code-layout58">
+		<div class="byte-boundries">
+			<div>byte<sub>0</sub></div><div>byte<sub>1</sub></div>
+			<div>byte<sub>2</sub></div><div>byte<sub>3</sub></div>
+			<div>byte<sub>4</sub></div><div>byte<sub>5</sub></div>
+			<div>byte<sub>6</sub></div><div>byte<sub>7</sub></div>
+		</div>
+		<div class="layout">
+			<div>red</div>
+			<div>green</div>
+			<div>blue</div>
+			<div>cw<sub>0</sub></div>
+			<div>cw<sub>1</sub></div>
+			<div>d</div>
+			<div>f</div>
+			<div>pixel indexes</div>
+		</div>
+		<div class="layout layout58">
+			<div class="unused"></div>
+			<div>P<sub>0</sub></div>
+			<div class="unused"></div>
+			<div>P<sub>1</sub></div>
+			<div class="unused"></div>
+			<div>P<sub>2</sub></div>
+			<div>d</div>
+			<div style="padding: 0; font-size: 10pt;">P<sub>3</sub></div>
+			<div>pixel indexes</div>
+		</div>
+	</div>
+	<div class="footnote">
+		<p><i>fig</i>:top row: byte boundries, middle row: standard block bit layout, bottom row: bit layout of 58-bit H-mode</p>
+		<ul>
+			<li>P<sub>0</sub>: part 0 of the 58-bit H-Mode block (7 bits)</li>
+			<li>P<sub>1</sub>: part 1 of the 58-bit H-Mode block (2 bits)</li>
+			<li>P<sub>2</sub>: part 2 of the 58-bit H-Mode block (16 bits)</li>
+			<li>P<Sub>3</Sub>: part 3 of the 58-bit H-Mode block (1 bit)</li>
+		</ul>
+	</div>
+	<p class="note">NOTE: Remember, this mode is signalled by the red channel not having overflow, but the green channel having overflow. As such when the bits from part 1 are packed into byte one during encoding, the first bit of that byte must be chosen so that the rest of the byte will not overflow when unpacked by an ETC2 decoder. Similarly, when inserting the 4 bits from parts 1 and 2 into the second byte, the rest of that byte's bits must be chosen as to avoid overflow. If you built a nice lookup table for doing this in the T-Mode decode, it can be used here too. (Seriously. Just make the table! It only has 16 entries and is by far the fastest way to do this.)</p>
+	<p>"Wow... that diagram doesn't tell us much about what is in each of those blocks." You're right. Honestly though, making a diagram that showed the internal breakdown would look pretty messy, so we are going to make two diagrams. Get ready for diagram 2. Here. We. Go.</p>
+	<div class="byte-diagram byte-diagram3 hmode-layout">
+		<div class="byte-boundries">
+			<div>byte<sub>0</sub></div><div>byte<sub>1</sub></div>
+			<div>byte<sub>2</sub></div><div>byte<sub>3</sub></div>
+			<div></div>
+		</div>
+		<div class="layout">
+			<div class="unused"></div>
+			<div>P<sub>0</sub></div>
+			<div>P<sub>1</sub></div>
+			<div>P<sub>2</sub></div>
+			<div style="padding: 0; font-size: 10pt;">P<sub>3</sub></div>
+			<div></div>
+		</div>
+		<div class="layout layoutH58">
+			<div class="unused"></div>
+			<div>R<sub>0</sub></div>
+			<div>G<sub>0</sub></div>
+			<div>B<sub>0</sub></div>
+			<div>R<sub>1</sub></div>
+			<div>G<sub>1</sub></div>
+			<div>B<sub>1</sub></div>
+			<div>C</div>
+		</div>
+	</div>
+	<div class="footnote">
+		<p><i>fig</i>: top row: byte boundries, middle row: de-fragmented 58-bit H-Mode data unpacked from differential code, bottom row: bit layout of 58-bit H-Mode data</p>
+		<ul>
+			<li>R<sub>0</sub>: red channel of color<sub>0</sub></li>
+			<li>G<sub>0</sub>: green channel of color<sub>0</sub></li>
+			<li>B<sub>0</sub>: blue channel of color<sub>0</sub></li>
+			<li>R<sub>1</sub>: red channel of color<sub>1</sub></li>
+			<li>G<sub>1</sub>: green channel of color<sub>1</sub></li>
+			<li>B<sub>1</sub>: blue channel of color<sub>1</sub></li>
+			<li>C: codeword</li>
+		</ul>
+	</div>
+	<p>Now you might be sitting there saying, "Wait a minute, there is a little something hanging off the end there. Where does that come from?" While 58-bit H-Mode does only store 58 bits in the differential mode payload, it works in the same manner that 59-bit T-Mode does. This means that it needs 59 bits of data to decode. So, again, where does the extra bit come from? The answer is something called the "ordering trick."</p>
+	<p>Data can actually be stored by ordering things in different manners, and that is taken advantage of here to eek out one more bit from the 58 that are stored in the differential mode payload. This is done by comparing the 12 bits of color<sub>0</sub> to the 12 bits of color<sub>1</sub>. If color<sub>0</sub> is greater, we get a 1, otherwise 0, and boom there we have our extra bit which is just ord into the low bit of the codeword.</p>
+	<p>From here it is again pretty simple. We extract the color channel data and codeword each into their own bytes from the payload, then expand the color channels from RGB4 to RGB8 using bit copying just like in 444 Mode. After that we use the codeword to look up the offset value from the ETC2 codebook. (ETC2 uses the same codebook for all modes, so reference the table in the T-Mode section) Finally we use the base colors and offset to construct a color table:</p>
+	<div class="table color-table color-table58">
+		<div>Table Color</div><div>value</div>
+		<div>T<sub>0</sub></div><div>color<sub>0</sub>+codebook[codeword]</div>
+		<div>T<sub>1</sub></div><div>color<sub>0</sub>-codebook[codeword]</div>
+		<div>T<sub>2</sub></div><div>color<sub>1</sub>+codebook[codeword]</div>
+		<div>T<sub>3</sub></div><div>color<sub>1</sub>-codebook[codeword]</div>
+	</div>
+	<div class="footnote">
+		<p><i>fig</i>: color table definition for 58-bit H-Mode</p>
+		<p>color+number here means adding that number to each channel of the color. (luminance offset) the resulting value is clamped to the [0,255] range</p>
+	</div>
+	<p>To finish the decode, we just traverse the pixels in the order indicated before and use the pixel index stored in the payload to look up the final color from this color table. That's all for 58-bit H-Mode. (code follows)</p>
+	<p class="code">
+		void decode58H(u8[] payload, u8[][] image, u32 x, u32 y) {
+			<span class="comment">//extract color data and codeword from payload</span>
+			u16 c0 = payload[0]|6,0| << 5 | payload[1]|4,3| << 3 | payload[1]|1,0| << 1 | payload[2]|7,7|;
+			u16 c1 = payload[2]|6,0| << 5 | payload[3]|7,3|;
+			u8 codeword = payload[3]|2,2| << 2 | payload[3]|0,0| << 1 | c0 > c1;
+
+			<span class="comment">//format color data into RGB8 using bit copying</span>
+			u8 c0r = c0|11,8| << 4 | c0|11,8|;
+			u8 c0g = c0|7,4| << 4 | c0|7,4|;
+			u8 c0b = c0|3,0| << 4 | c0|3,0|;
+
+			u8 c1r = c1|11,8| << 4 | c1|11,8|;
+			u8 c1g = c1|7,4| << 4 | c1|7,4|;
+			u8 c1b = c1|3,0| << 4 | c1|3,0|;
+
+			<span class="comment">//create color table from base colors</span>
+			u8[][] colors = u8[4][3];
+			colors[0][0] = c0r + codebookECT2[codeword];
+			colors[0][1] = c0g + codebookECT2[codeword];
+			colors[0][2] = c0g + codebookECT2[codeword];
+
+			colors[1][0] = c0r - codebookECT2[codeword];
+			colors[1][1] = c0g - codebookECT2[codeword];
+			colors[1][2] = c0g - codebookECT2[codeword];
+
+			colors[2][0] = c1r + codebookECT2[codeword];
+			colors[2][1] = c1g + codebookECT2[codeword];
+			colors[2][2] = c1g + codebookECT2[codeword];
+
+			colors[3][0] = c1r - codebookECT2[codeword];
+			colors[3][1] = c1g - codebookECT2[codeword];
+			colors[3][2] = c1g - codebookECT2[codeword];
+
+			<span class="comment">//extract pixel indexes then set colors in image data</span>
+			for(u8 a = 0; a < 4; a++)
+			for(u8 b = 0; b < 4; b++) {
+				u8 pi = payload[4 + a]|7 - 2*b, 6 - 2*b|;
+
+				u32 imageY = y + a;
+				u32 imageX = 4*(x + b);
+				image[imageY][imageX] = colors[pi][0];
+				image[imageY][imageX + 1] = colors[pi][1];
+				image[imageY][imageX + 2] = colors[pi][2];
+			}
+		}
+	</p>
+	<p>Let's move on the the final mode; Planar Mode.</p>
+	<h4>Planar Mode</h4>
+	<p>Planar Mode works quite a bit differently than the other modes do. It doesn't even have a codebook. The reason for this is because planar mode is designed to be able to replicate blocks that have a gradient change from one color to another. The other encoding methods have a hard time reproducing these blocks, and you get block-edge artifacts in the compressed image. So let's get right into it and look at how the data is packed into the differential mode payload:</p>
+	<div class="byte-diagram byte-diagram3 code-layout code-layout57">
+		<div class="byte-boundries">
+			<div>byte<sub>0</sub></div><div>byte<sub>1</sub></div>
+			<div>byte<sub>2</sub></div><div>byte<sub>3</sub></div>
+			<div>byte<sub>4</sub></div><div>byte<sub>5</sub></div>
+			<div>byte<sub>6</sub></div><div>byte<sub>7</sub></div>
+		</div>
+		<div class="layout">
+			<div>red</div>
+			<div>green</div>
+			<div>blue</div>
+			<div>cw<sub>0</sub></div>
+			<div>cw<sub>1</sub></div>
+			<div>d</div>
+			<div>f</div>
+			<div>pixel indexes</div>
+		</div>
+		<div class="layout layout57">
+			<div class="unused"></div>
+			<div>P<sub>0</sub></div>
+			<div class="unused"></div>
+			<div>P<sub>1</sub></div>
+			<div class="unused"></div>
+			<div>P<sub>2</sub></div>
+			<div class="unused"></div>
+			<div>P<sub>3</sub></div>
+			<div>d</div>
+			<div>P<sub>4</sub></div>
+		</div>
+	</div>
+	<div class="footnote">
+		<p><i>fig</i>: top row: byte boundries, middle row: standard block bit layout, bottom row: 57-bit Planar Mode layout</p>
+		<ul>
+			<li>P<sub>0</sub>: part 0 of 57-bit Planar Mode block (7 bits)</li>
+			<li>P<sub>1</sub>: part 1 of 57-bit Planar Mode block (7 bits)</li>
+			<li>P<sub>2</sub>: part 2 of 57-bit Planar Mode block (2 bits)</li>
+			<li>P<sub>3</sub>: part 3 of 57-bit Planar Mode block (8 bits)</li>
+			<li>d: diff bit (must be 1)</li>
+			<li>P<sub>4</sub>: part 4 of 57-bit Planar Mode block (33 bits)</li>
+		</ul>
+	</div>
+	<p class="note">NOTE: Remember, this mode is signalled by the red and green channels in the normal differential mode code not having overflow, and the blue channel having overflow. When inserting the 7 bits into the first two bytes, the first bit of those two bytes must be set so as to avoid overflow. Similarly, when inseting the 4 bits from P<sub>2</sub> and P<sub>3</sub> into the third byte, the other 4 bits of that byte must be set so that the value overflows. I even made the table for you. (See appendix 2)</p>
+	<p>Ah, we've run into another one of these layouts that doesn't fit into one diagram well. Here we go with diagram numero dos.</p>
+	<div class="byte-diagram byte-diagram3 code-layout code-layoutP">
+		<div class="byte-boundries">
+			<div>byte<sub>0</sub></div><div>byte<sub>1</sub></div>
+			<div>byte<sub>2</sub></div><div>byte<sub>3</sub></div>
+			<div>byte<sub>4</sub></div><div>byte<sub>5</sub></div>
+			<div>byte<sub>6</sub></div><div>byte<sub>7</sub></div>
+		</div>
+		<div class="layout">
+			<div class="unused"></div>
+			<div>P<sub>0</sub></div>
+			<div>P<sub>1</sub></div>
+			<div>P<sub>2</sub></div>
+			<div>P<sub>3</sub></div>
+			<div>P<sub>4</sub></div>
+		</div>
+		<div class="layout layoutP">
+			<div class="unused"></div>
+			<div>R<sub>0</sub></div>
+			<div>G<sub>0</sub></div>
+			<div>B<sub>0</sub></div>
+			<div>R<sub>H</sub></div>
+			<div>G<sub>H</sub></div>
+			<div>B<sub>H</sub></div>
+			<div>R<sub>V</sub></div>
+			<div>G<sub>V</sub></div>
+			<div>B<sub>V</sub></div>
+		</div>
+	</div>
+	<div class="footnote">
+		<p><i>fig</i>: top row: byte boundries, middle row: de-fragmented 57-bit Planar Mode data unpacked from differential code, bottom row: bit layout of 57-bit Planar Mode data</p>
+		<ul>
+			<li>R<sub>0</sub>: base color red channel (6 bits)</li>
+			<li>G<sub>0</sub>: base color green channel (7 bits)</li>
+			<li>B<sub>0</sub>: base color blue channel (6 bits)</li>
+			<li>R<sub>H</sub>: horizontal color red channel (6 bits)</li>
+			<li>G<sub>H</sub>: horizontal color green channel (7 bits)</li>
+			<li>B<sub>H</sub>: horizontal color blue channel (6 bits)</li>
+			<li>R<sub>V</sub>: vertical color red channel (6 bits)</li>
+			<li>G<sub>V</sub>: vertical color green channel (7 bits)</li>
+			<li>B<sub>V</sub>: vertical color blue channel (6 bits)</li>
+		</ul>
+	</div>
+	<p>There you have it, you should probably notice two big things staring you in the face from this last diagram.</p>
+	<ol>
+		<li>No pixel indexes here.</li>
+		<li>There are three colors here stored in RGB676</li>
+	</ol>
+	<p>The pixel indexes are not needed here because the final decode in planar mode is just a simple interpolation between these colors to fill the block. According to the Ericsson's ETCPACK implementation, the colors should generally be chosen as such for best results:</p>
+	<div class="pixel-layout">
+		<div class="t l"></div><div>X+</div><div>→</div><div></div><div></div><div class="t r"></div>
+		<div>Y+</div><div>c0</div><div></div><div></div><div></div><div class="bg">cH</div>
+		<div>↓</div><div></div><div></div><div></div><div></div><div class="bg"></div>
+		<div></div><div></div><div></div><div></div><div></div><div class="bg"></div>
+		<div></div><div></div><div></div><div></div><div></div><div class="n"></div>
+		<div class="b l"></div><div class="rg">cV</div><div class="rg"></div><div class="rg"></div><div class="n"></div><div class="b r"></div>
+	</div>
+	<p>So, to finish up we just need to expand these values to RGB8 using bit copying like we have in the past. Then we interpolate to decode the pixels in the block in the order that was showed before. I will leave this interpolation for the code section. (code follows)</p>
+	<p class="code">
+		void decode57P(u8[] payload, u8[][] image, u32 x, u32 y) {
+			<span class="comment">//extract the different color channels into bytes</span>
+			u8 c0r6 = payload[0]|6,1|;
+			u8 c0g7 = payload[0]|0,0| << 6 | payload[1]|6,1|;
+			u8 c0b6 = payload[1]|0,0| << 5 | payload[2]|4,3| << 3 | payload[2]|1,0| << 1 | payload[3]|7,7|;
+
+			u8 cHr6 = payload[3]|6,2| << 1 | payload[3]|0,0|;
+			u8 cHg7 = payload[4]|7,1|;
+			u8 cHb6 = payload[4]|0,0| << 5 | payload[5]|7,3|;
+
+			u8 cVr6 = payload[5]|2,0| << 3 | payload[6]|7,5|;
+			u8 cVg7 = payload[6]|4,0| << 2 | payload[7]|7,6|;
+			u8 cVb6 = payload[7]|5,0|;
+
+			<span class="comment">//use bit copying to extend the colors to RGB8</span>
+			u8 c0r = c0r6 << 2 | c0r6 >> 4;
+			u8 c0g = c0g7 << 1 | c0g7 >> 6;
+			u8 c0b = c0b6 << 2 | c0b6 >> 4;
+
+			u8 cHr = cHr6 << 2 | cHr6 >> 4;
+			u8 cHg = cHg7 << 1 | cHg7 >> 6;
+			u8 cHb = cHb6 << 2 | cHb6 >> 4;
+
+			u8 cVr = cVr6 << 2 | cVr6 >> 4;
+			u8 cVg = cVg7 << 1 | cVg7 >> 6;
+			u8 cVb = cVb6 << 2 | cVb6 >> 4;
+
+			<span class="comment">//set pixel color values in image via interpolation</span>
+			for(u8 a = 0; a < 4; a++)
+			for(u8 b = 0; b < 4; b++) {
+				u32 imageX = 4*(x + b);
+				u32 imageY = y + a;
+
+				image[imageY][imageX] = clamp(0, (b*(cHr - c0r) + a*(cVr - c0r) + 4*c0r + 2) >> 2, 255);
+				image[imageY][imageX + 1] = clamp(0, (b*(cHg - c0g) + a*(cVg - c0g) + 4*c0g + 2) >> 2, 255);
+				image[imageY][imageX + 1] = clamp(0, (b*(cHb - c0b) + a*(cVb - c0b) + 4*c0b + 2) >> 2, 255);
+			}
+		}
+	</p>
+	<p>Well, that's all folks. We have covered all of the different decoding modes of the ETC2 specification. Hopefully you found this helpful.</p>
+	<h3>Afterward</h3>
+	<p>This document, despite being a product of my interest in how the ETC2 format is encoded focuses mostly on the manner in which the different ETC2 encodings are decoded. The reason for this is partially because I haven't actually implemented an encoder yet, but also because if you are looking to build your own encoder it is more important to know how the values will be decoded than how you should encode them.</p>
+	<p>Thanks for your time, and hopefully you found this document useful.</p>
+	<h3>Appendix 1:</h3>
+	<h4>The || operator used in code blocks in this document</h4>
+	<p>Because the syntax of bit manipulation features of many languages differ, the exercise of translating the bit banging used in this specification is left up to the reader. In order to simplify the appearance of code and generalize it more, the || (double pipe) operator is used to signify array type access at the bit level with automatic shift down. Generally:</p>
+	<div class="footnote">
+		<p>given a is an byte</p>
+		<p>a|c,b| where c > b and b >= 0</p>
+		<p>gives the bit string from 2<sup>c</sup> .. 2<sup>b</sup> automatically shifted down into the least significant bits</p>
+		<p>e.g.</p>
+		<p>given the binary value 0x99 or 10011001 called a</p>
+		<p>then a|4,2| is the bits for 2<sup>4</sup>, 2<sup>3</sup>, and 2<sup>2</sup> as a bit string shifted down to the least significant places</p>
+		<p>so a|4,2| gives 0x06 or 00000110</p>
+	</div>
+	<h3>Appendix 2:</h3>
+	<h4>Lookup Table for inserting 4 bits into a byte in a manner that overflows under differential mode decoding.</h4>
+	<div class="table overflow-table">
+		<div>insert</div><div>write</div><div>overflow</div>
+		<div>0x0</div><div>0x04</div><div>-4</div>
+		<div>0x1</div><div>0x05</div><div>-3</div>
+		<div>0x2</div><div>0x06</div><div>-2</div>
+		<div>0x3</div><div>0x07</div><div>-1</div>
+		<div>0x4</div><div>0x0c</div><div>-3</div>
+		<div>0x5</div><div>0x0d</div><div>-2</div>
+		<div>0x6</div><div>0x0r</div><div>-1</div>
+		<div>0x7</div><div>0xeb</div><div>32</div>
+		<div>0x8</div><div>0x14</div><div>-2</div>
+		<div>0x9</div><div>0x15</div><div>-1</div>
+		<div>0xa</div><div>0xf6</div><div>32</div>
+		<div>0xb</div><div>0xf3</div><div>33</div>
+		<div>0xc</div><div>0x1c</div><div>-1</div>
+		<div>0xd</div><div>0xf9</div><div>32</div>
+		<div>0xe</div><div>0xfa</div><div>33</div>
+		<div>0xf</div><div>0xfb</div><div>34</div>
+	</div>
+	<div class="footnote">
+		<ul>
+			<li>insert: nibble to insert into byte while ensuring overflow</li>
+			<li>write: byte to write that holds the nibble to insert and overflows</li>
+			<li>overflow: value the decode is expected to get during the overflow calculation</li>
+		</ul>
+	</div>
+	<h4>Method for ensuring non overflow of byte after insertion of lower 7 bits under differential mode decoding.</h4>
+	<div class="footnote">
+		<p>To ensure that no over/underflow happens when writing 7 bits into the byte of a color channel, set the leading bit of that byte to the opposite of the leading bit of the 7-bit value.</p>
+		<p>i.e.</p>
+		<p>given the 7-bit value to write called a</p>
+		<p>colorByte = ~a|6,6| << 7 | a|6,1|;</p>
+	</div>
+	<p>This works because the 3-bit two's compliment number can only produce the values [-4,3].</p>
+	<p>If the first bit of the 7-bit value is 1, setting the first bit of the byte to zero makes the 5 bit base value the decoder sees somewhere in the range [8,15] and no 3-bit two's compliment value can put any of those values outside the range [0,31].</p>
+	<p>Similarly, if the first bit of the 7-bit value is 0, setting the first bit of the byte to one makes the 5 bit base value the decoder sees somewhere in the range [16,23] and again the 8-bit two's compliment value cannot put any of these values outside the range [0,31].</p>
+	<p>Thus this rule ensures these values never over/underflow.</p>
+	<div class="footnote">
+		<p>written July 2019 by Nic Johnson : nicjohnson7@yahoo.com</p>
+	</div>
+</body>
+</html>
